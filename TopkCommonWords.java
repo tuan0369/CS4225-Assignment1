@@ -1,0 +1,128 @@
+// Matric Number: A0219731E 
+// Name: Nguyen Minh tuan
+// TopkCommonWords.java
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat; 
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+import java.io.*;
+import java.util.StringTokenizer;
+
+public class TopkCommonWords {
+
+    // public static class KV {
+        
+    //     private Text key;
+    //     private Text value;
+
+    //     public KV() {
+    //         key = new Text("");
+    //         value = new Text("");
+    //     }
+
+    //     public Text getVal() {
+    //         return value;
+    //     }
+
+    //     public Text getKey() {
+    //         return key;
+    //     }
+
+    //     public void setKey(String t) {
+    //         key.set(t);
+    //     }
+
+    //     public void setVal(String t) {
+    //         value.set(t);
+    //     }
+    // }
+        
+    public static class TokenMapper
+        extends Mapper<Object, Text, Text, IntWritable>{        
+        
+        // private KV kv = new KV();
+        private IntWritable one = new IntWritable(1);
+        private Text word = new Text();
+
+        public void map(Object key, Text value, Context context
+                        ) throws IOException, InterruptedException {
+            
+            StringTokenizer itr = new StringTokenizer(value.toString());
+            String fileName = ((FileSplit) context.getInputSplit()).getPath().getName();
+
+            while (itr.hasMoreTokens()) {
+                // kv.setKey(fileName);
+                // kv.setVal(itr.nextToken());
+                word.set(fileName + ": " + itr.nextToken());
+                context.write(word, one);
+            }
+        }
+    }
+
+    public static class TokenCombiner 
+        extends Reducer<Text, IntWritable, Text, IntWritable> {
+        
+        private IntWritable result = new IntWritable();
+        
+        public void combine(Text key, Iterable<IntWritable> values, Context context) 
+            throws IOException, InterruptedException {
+            
+            int sum = 0;
+            String sKey = key.toString();
+
+            for (IntWritable val : values) {
+                sum += val.get(); 
+            }
+
+            result.set(sum);
+            if (sKey.startsWith("stopwords.txt")) {
+                result.set(Integer.MAX_VALUE);
+            } 
+
+            key.set(sKey.substring(sKey.lastIndexOf(": ") + 1));
+            context.write(key, result);
+        }
+
+    }
+
+    public static class MinOccurenceReducer
+        extends Reducer<Text, IntWritable, Text, IntWritable> {
+        private IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values,
+                        Context context
+                        ) throws IOException, InterruptedException {
+            int min = 0;
+            for (IntWritable val : values) {
+                // min = (min > val.get()) ? val.get() : min;
+                min = val.get();
+            }
+
+            result.set(min);
+            context.write(key, result);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        Configuration conf = new Configuration();
+        Job job = Job.getInstance(conf, "top word");
+        job.setJarByClass(TopkCommonWords.class);
+        job.setMapperClass(TokenMapper.class);
+        job.setCombinerClass(TokenCombiner.class);
+        job.setReducerClass(MinOccurenceReducer.class);  
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(IntWritable.class);
+        FileInputFormat.addInputPath(job, new Path(args[0]));
+        FileInputFormat.addInputPath(job, new Path(args[1]));
+        FileInputFormat.addInputPath(job, new Path(args[2]));
+        FileOutputFormat.setOutputPath(job, new Path(args[3]));
+        System.exit(job.waitForCompletion(true) ? 0 : 1);
+    }
+}
