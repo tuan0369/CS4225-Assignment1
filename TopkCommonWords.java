@@ -52,6 +52,15 @@ public class TopkCommonWords {
         private Text word = new Text();
         private Set<String> stopWords;
 
+        protected void setup(Context context) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+
+            stopWords = new HashSet<String>();
+            for(String word : conf.get("stop words").split(",")) {
+                stopWords.add(word);
+            }
+        }
+
         public void map(Object key, Text value, Context context
                         ) throws IOException, InterruptedException {
             
@@ -125,7 +134,7 @@ public class TopkCommonWords {
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        conf.set("stop.words", new Path(args[2]));
+        conf.set("stop words", new Path(args[2]));
         Job job = Job.getInstance(conf, "top word");
         job.setJarByClass(TopkCommonWords.class);
         job.setMapperClass(TokenMapper.class);
