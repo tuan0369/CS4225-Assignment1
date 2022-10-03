@@ -16,35 +16,7 @@ import java.io.*;
 import java.util.StringTokenizer;
 import java.util.HashSet;
 
-public class TopkCommonWords {
-
-    // public static class KV {
-        
-    //     private Text key;
-    //     private Text value;
-
-    //     public KV() {
-    //         key = new Text("");
-    //         value = new Text("");
-    //     }
-
-    //     public Text getVal() {
-    //         return value;
-    //     }
-
-    //     public Text getKey() {
-    //         return key;
-    //     }
-
-    //     public void setKey(String t) {
-    //         key.set(t);
-    //     }
-
-    //     public void setVal(String t) {
-    //         value.set(t);
-    //     }
-    // }
-        
+public class TopkCommonWords {      
     public static class TokenMapper
         extends Mapper<Object, Text, Text, IntWritable>{        
         
@@ -95,7 +67,7 @@ public class TopkCommonWords {
     }
 
     public static class TokenReducer 
-        extends Reducer<Text, IntWritable, Text, IntWritable> {
+        extends Reducer<Text, IntWritable, IntWritable, Text> {
         
         private IntWritable result = new IntWritable();
         
@@ -119,28 +91,10 @@ public class TopkCommonWords {
                 result.set(sum_doc2);
             }
 
-            context.write(key, result);
+            context.write(result, key);
         }
 
     }
-
-    // public static class OccurenceReducer
-    //     extends Reducer<Text, IntWritable, Text, IntWritable> {
-    //     private IntWritable result = new IntWritable();
-
-    //     public void reduce(Text key, Iterable<IntWritable> values,
-    //                     Context context
-    //                     ) throws IOException, InterruptedException {
-    //         int min = 0;
-    //         for (IntWritable val : values) {
-    //             // min = (min > val.get()) ? val.get() : min;
-    //             min = val.get();
-    //         }
-
-    //         result.set(min);
-    //         context.write(key, result);
-    //     }
-    // }
 
     public static void main(String[] args) throws Exception {
         Path stopWords = new Path(args[2]);
@@ -152,8 +106,10 @@ public class TopkCommonWords {
         job.setMapperClass(TokenMapper.class);
         // job.setCombinerClass(TokenReducer.class);
         job.setReducerClass(TokenReducer.class);  
-        job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(IntWritable.class);
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(IntWritable.class);
+        job.setOutputKeyClass(IntWritable.class);
+        job.setOutputValueClass(Text.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
         // FileInputFormat.addInputPath(job, new Path(args[2]));
