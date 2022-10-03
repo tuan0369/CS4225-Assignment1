@@ -48,80 +48,94 @@ public class TopkCommonWords {
         extends Mapper<Object, Text, Text, IntWritable>{        
         
         // private KV kv = new KV();
-        private IntWritable one = new IntWritable(1);
+        private IntWritable docID = new IntWritable();
         private Text word = new Text();
+        private Set<String> stopWords;
 
         public void map(Object key, Text value, Context context
                         ) throws IOException, InterruptedException {
             
             StringTokenizer itr = new StringTokenizer(value.toString());
             String fileName = ((FileSplit) context.getInputSplit()).getPath().getName();
+            int dID;
+
+            if ("task1-input1.txt".equals(fileName)) {
+                dID = 1;
+            } else {
+                dID = 2;
+            }
 
             while (itr.hasMoreTokens()) {
                 // kv.setKey(fileName);
                 // kv.setVal(itr.nextToken());
-                word.set(fileName + ": " + itr.nextToken());
-                context.write(word, one);
+                word.set(itr.nextToken());
+                docID.set(dID);
+                context.write(word, docID);
             }
         }
     }
 
-    public static class TokenCombiner 
+    public static class TokenReducer 
         extends Reducer<Text, IntWritable, Text, IntWritable> {
         
         private IntWritable result = new IntWritable();
         
-        public void combine(Text key, Iterable<IntWritable> values, Context context) 
+        public void reduce(Text key, Iterable<IntWritable> docIDs, Context context) 
             throws IOException, InterruptedException {
             
-            int sum = 0;
-            String sKey = key.toString();
+            int sum_doc1 = 0;
+            int sum_doc2 = 0;
 
-            for (IntWritable val : values) {
-                sum += val.get(); 
+            for (IntWritable dID : docIDs) {
+                if (dID.get() == 1) {
+                    sum_doc1 += 1;
+                } else {
+                    sum_doc2 += 1;
+                }
             }
 
-            result.set(sum);
-            if (sKey.startsWith("stopwords.txt")) {
-                result.set(Integer.MAX_VALUE);
-            } 
+            if (sum_doc1 < sum_doc2) {
+                result.set(sum_doc1);
+            } else {
+                result.set(sum_doc2);
+            }
 
-            key.set(sKey.substring(sKey.lastIndexOf(": ") + 1));
             context.write(key, result);
         }
 
     }
 
-    public static class MinOccurenceReducer
-        extends Reducer<Text, IntWritable, Text, IntWritable> {
-        private IntWritable result = new IntWritable();
+    // public static class OccurenceReducer
+    //     extends Reducer<Text, IntWritable, Text, IntWritable> {
+    //     private IntWritable result = new IntWritable();
 
-        public void reduce(Text key, Iterable<IntWritable> values,
-                        Context context
-                        ) throws IOException, InterruptedException {
-            int min = 0;
-            for (IntWritable val : values) {
-                // min = (min > val.get()) ? val.get() : min;
-                min = val.get();
-            }
+    //     public void reduce(Text key, Iterable<IntWritable> values,
+    //                     Context context
+    //                     ) throws IOException, InterruptedException {
+    //         int min = 0;
+    //         for (IntWritable val : values) {
+    //             // min = (min > val.get()) ? val.get() : min;
+    //             min = val.get();
+    //         }
 
-            result.set(min);
-            context.write(key, result);
-        }
-    }
+    //         result.set(min);
+    //         context.write(key, result);
+    //     }
+    // }
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
+        conf.set("stop.words", new Path(args[2]));
         Job job = Job.getInstance(conf, "top word");
         job.setJarByClass(TopkCommonWords.class);
         job.setMapperClass(TokenMapper.class);
-        job.setCombinerClass(TokenCombiner.class);
-        job.setReducerClass(MinOccurenceReducer.class);  
+        // job.setCombinerClass(TokenReducer.class);
+        job.setReducerClass(TokenReducer.class);  
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
-        FileInputFormat.addInputPath(job, new Path(args[2]));
+        // FileInputFormat.addInputPath(job, new Path(args[2]));
         FileOutputFormat.setOutputPath(job, new Path(args[3]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
