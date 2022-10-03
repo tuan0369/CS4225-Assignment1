@@ -14,6 +14,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import java.io.*;
 import java.util.StringTokenizer;
+import java.util.HashSet;
 
 public class TopkCommonWords {
 
@@ -50,14 +51,18 @@ public class TopkCommonWords {
         // private KV kv = new KV();
         private IntWritable docID = new IntWritable();
         private Text word = new Text();
-        private Set<String> stopWords;
+        private HashSet<String> stopWords;
 
         protected void setup(Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
+            String path = conf.get("stop words");
+            File file = new File(path);
+            BufferedReader br = new BufferedReader(new FileReader(file));
 
             stopWords = new HashSet<String>();
-            for(String word : conf.get("stop words").split(",")) {
-                stopWords.add(word);
+            String st;
+            while ((st = br.readLine()) != null) {
+                stopWords.add(st);
             }
         }
 
@@ -77,7 +82,12 @@ public class TopkCommonWords {
             while (itr.hasMoreTokens()) {
                 // kv.setKey(fileName);
                 // kv.setVal(itr.nextToken());
-                word.set(itr.nextToken());
+                String w = itr.nextToken();
+                if (stopWords.contains(w)) {
+                    continue;
+                }
+
+                word.set(w);
                 docID.set(dID);
                 context.write(word, docID);
             }
@@ -133,8 +143,10 @@ public class TopkCommonWords {
     // }
 
     public static void main(String[] args) throws Exception {
+        Path stopWords = new Path(args[2]);
+        
         Configuration conf = new Configuration();
-        conf.set("stop words", new Path(args[2]));
+        conf.set("stop words", stopWords.toString());
         Job job = Job.getInstance(conf, "top word");
         job.setJarByClass(TopkCommonWords.class);
         job.setMapperClass(TokenMapper.class);
