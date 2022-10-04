@@ -12,9 +12,20 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat; 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
+
 import java.io.*;
 import java.util.StringTokenizer;
+import java.util.Set;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.TreeMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class TopkCommonWords {      
     public static class TokenMapper
@@ -25,6 +36,7 @@ public class TopkCommonWords {
         private Text word = new Text();
         private HashSet<String> stopWords;
 
+        @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             Configuration conf = context.getConfiguration();
             String path = conf.get("stop words");
@@ -38,6 +50,7 @@ public class TopkCommonWords {
             }
         }
 
+        @Override
         public void map(Object key, Text value, Context context
                         ) throws IOException, InterruptedException {
             
@@ -69,13 +82,16 @@ public class TopkCommonWords {
     public static class TokenReducer 
         extends Reducer<Text, IntWritable, IntWritable, Text> {
         
-        private IntWritable result = new IntWritable();
+        private Integer result;
+        Map<Integer, Text> map = new TreeMap<Integer, Text>(Collections.reverseOrder());
+        private LinkedHashMap<Text, Integer> reverseSortedMap = new LinkedHashMap<>();
         
+        @Override
         public void reduce(Text key, Iterable<IntWritable> docIDs, Context context) 
             throws IOException, InterruptedException {
             
-            int sum_doc1 = 0;
-            int sum_doc2 = 0;
+            Integer sum_doc1 = 0;
+            Integer sum_doc2 = 0;
 
             for (IntWritable dID : docIDs) {
                 if (dID.get() == 1) {
@@ -86,12 +102,52 @@ public class TopkCommonWords {
             }
 
             if (sum_doc1 < sum_doc2) {
-                result.set(sum_doc1);
+                result = sum_doc2;
             } else {
-                result.set(sum_doc2);
+                result = sum_doc2;
             }
 
-            context.write(result, key);
+            map.put(result, key);    
+        }
+
+        @Override
+        protected void cleanup(Context context) 
+            throws IOException, InterruptedException{
+            // Comparator<Entry<Integer, Text>> comparator = new Comparator<Entry<Integer, Text>>() {
+            //     @Override
+            //     public int compare(Entry<Integer, Text> e1, Entry<Integer, Text> e2) {
+            //         Integer k1 = e1.getValue();
+            //         Integer k2 = e2.getValue();
+            //         return (-1 * k1.compareTo(k2));
+            //     }
+            // };
+
+            // Text word = new Text();
+            // List<Entry<Text, Integer>> lst = new ArrayList<Entry<Text, Integer>>(map.entrySet());
+            // Collections.sort(lst, comparator);
+            // for (Entry<Text, Integer> entry : lst) {
+            //     // reverseSortedMap.put(entry.getKey(), entry.getValue());
+            //     occurence.set(entry.getValue());
+            //     word.set(entry.getKey());
+            //     context.write(occurence, word);
+            // }
+            
+            // IntWritable occurence = new IntWritable();
+            // reverseSortedMap.forEach((key, value) -> {
+            //     occurence.set(value);
+            //     context.write(occurence, key);
+            // });
+
+            int i = 0;
+            for (Map.Entry<Integer, Text> entry : map.entrySet()) {
+                if (i == 20) {
+                    break;
+                }
+                
+                IntWritable occurence = new IntWritable(entry.getKey());
+                context.write(occurence, entry.getValue());
+                i += 1;
+            }
         }
 
     }
