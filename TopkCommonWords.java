@@ -83,8 +83,9 @@ public class TopkCommonWords {
         extends Reducer<Text, IntWritable, IntWritable, Text> {
         
         private Integer result;
-        Map<Integer, Text> map = new TreeMap<Integer, Text>(Collections.reverseOrder());
-        private LinkedHashMap<Text, Integer> reverseSortedMap = new LinkedHashMap<>();
+        // private Text word = new Text();
+        private Map<Integer, Text> map = new TreeMap<Integer, Text>(Collections.reverseOrder());
+        private LinkedHashMap<Integer, Text> reverseSortedMap = new LinkedHashMap<>();
         
         @Override
         public void reduce(Text key, Iterable<IntWritable> docIDs, Context context) 
@@ -106,38 +107,16 @@ public class TopkCommonWords {
             } else {
                 result = sum_doc2;
             }
+            Text word = new Text(key.toString());
 
-            map.put(result, key);    
+            map.put(result, word);
+            // IntWritable a = new IntWritable(result);  
+            // context.write(a, key);
         }
 
         @Override
         protected void cleanup(Context context) 
             throws IOException, InterruptedException{
-            // Comparator<Entry<Integer, Text>> comparator = new Comparator<Entry<Integer, Text>>() {
-            //     @Override
-            //     public int compare(Entry<Integer, Text> e1, Entry<Integer, Text> e2) {
-            //         Integer k1 = e1.getValue();
-            //         Integer k2 = e2.getValue();
-            //         return (-1 * k1.compareTo(k2));
-            //     }
-            // };
-
-            // Text word = new Text();
-            // List<Entry<Text, Integer>> lst = new ArrayList<Entry<Text, Integer>>(map.entrySet());
-            // Collections.sort(lst, comparator);
-            // for (Entry<Text, Integer> entry : lst) {
-            //     // reverseSortedMap.put(entry.getKey(), entry.getValue());
-            //     occurence.set(entry.getValue());
-            //     word.set(entry.getKey());
-            //     context.write(occurence, word);
-            // }
-            
-            // IntWritable occurence = new IntWritable();
-            // reverseSortedMap.forEach((key, value) -> {
-            //     occurence.set(value);
-            //     context.write(occurence, key);
-            // });
-
             int i = 0;
             for (Map.Entry<Integer, Text> entry : map.entrySet()) {
                 if (i == 20) {
@@ -157,19 +136,20 @@ public class TopkCommonWords {
         
         Configuration conf = new Configuration();
         conf.set("stop words", stopWords.toString());
+
         Job job = Job.getInstance(conf, "top word");
         job.setJarByClass(TopkCommonWords.class);
         job.setMapperClass(TokenMapper.class);
-        // job.setCombinerClass(TokenReducer.class);
         job.setReducerClass(TokenReducer.class);  
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(IntWritable.class);
         job.setOutputKeyClass(IntWritable.class);
         job.setOutputValueClass(Text.class);
+
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileInputFormat.addInputPath(job, new Path(args[1]));
-        // FileInputFormat.addInputPath(job, new Path(args[2]));
         FileOutputFormat.setOutputPath(job, new Path(args[3]));
+
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }

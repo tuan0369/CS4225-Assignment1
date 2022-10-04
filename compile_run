@@ -12,12 +12,12 @@ hdfs dfs -rm -r commonwords/wc_output commonwords/cm_output
 echo "Submit job"
 hadoop jar cm.jar TopkCommonWords commonwords/input/task1-input1.txt commonwords/input/task1-input2.txt commonwords/input/stopwords.txt commonwords/cm_output/
 echo "Job finished. Print Top 20 words."
-# hdfs dfs -cat commonwords/cm_output/part-r-00000
-#if [[ "$(hdfs dfs -cat commonwords/cm_output/part-r-00000)" == "$(cat answer.txt)" ]]
-#then
+hdfs dfs -cat commonwords/cm_output/part-r-00000
+# if [[ "$(hdfs dfs -cat commonwords/cm_output/part-r-00000)" == "$(cat answer.txt)" ]]
+# then
 #  echo "Test passed."
-#else
+# else
 #  echo "Wrong answer."
-#fi
+# fi
 hdfs dfs -get commonwords/cm_output/part-r-00000 . && mv part-r-00000 output.txt
 python3 check_common.py answer.txt output.txt
