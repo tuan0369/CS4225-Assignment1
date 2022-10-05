@@ -84,7 +84,7 @@ public class TopkCommonWords {
         
         private Integer result;
         // private Text word = new Text();
-        private Map<Integer, Text> map = new TreeMap<Integer, Text>(Collections.reverseOrder());
+        private Map<Integer, ArrayList<Text>> map = new TreeMap<Integer, ArrayList<Text>>(Collections.reverseOrder());
         private LinkedHashMap<Integer, Text> reverseSortedMap = new LinkedHashMap<>();
         
         @Override
@@ -93,6 +93,8 @@ public class TopkCommonWords {
             
             Integer sum_doc1 = 0;
             Integer sum_doc2 = 0;
+
+
 
             for (IntWritable dID : docIDs) {
                 if (dID.get() == 1) {
@@ -108,8 +110,12 @@ public class TopkCommonWords {
                 result = sum_doc2;
             }
             Text word = new Text(key.toString());
+            ArrayList<Text> words= new ArrayList<>();
 
-            map.put(result, word);
+            if (!map.containsKey(result)) {
+                map.put(result, words); 
+            } 
+            map.get(result).add(word);
             // IntWritable a = new IntWritable(result);  
             // context.write(a, key);
         }
@@ -118,14 +124,20 @@ public class TopkCommonWords {
         protected void cleanup(Context context) 
             throws IOException, InterruptedException{
             int i = 0;
-            for (Map.Entry<Integer, Text> entry : map.entrySet()) {
+            for (Map.Entry<Integer, ArrayList<Text>> entry : map.entrySet()) {
                 if (i == 20) {
                     break;
                 }
                 
                 IntWritable occurence = new IntWritable(entry.getKey());
-                context.write(occurence, entry.getValue());
-                i += 1;
+                for (int j = 0; j < entry.getValue().size(); j++) {
+                    if (i == 20) {
+                        break;
+                    }
+
+                    context.write(occurence, entry.getValue().get(j));
+                    i += 1;
+                }
             }
         }
 
