@@ -105,7 +105,7 @@ public class TopkCommonWords {
             }
 
             if (sum_doc1 < sum_doc2) {
-                result = sum_doc2;
+                result = sum_doc1;
             } else {
                 result = sum_doc2;
             }
